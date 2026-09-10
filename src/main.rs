@@ -19,23 +19,61 @@ impl Colour {
     }
 }
 
+struct Board {
+    board: Vec<Vec<Option<Colour>>>,
+    size: usize,
+}
+
+impl Board {
+    fn new(size: usize) -> Board {
+        Board {
+            board: vec![vec![None; size]; size],
+            size,
+        }
+    }
+
+    fn print(&self) {
+        for i in self.board.as_slice() {
+            println!("{}", "_".repeat(self.size * 8 + 1));
+            for j in i {
+                match j {
+                    Some(Colour::Black) => print!("| Black "),
+                    Some(Colour::White) => print!("| White "),
+                    None => print!("|       ")
+                }
+            }
+            println!("|")
+        }
+        println!("{}", "_".repeat(self.size * 8 + 1));
+    }
+    
+    fn check_win(&self) {
+        println!("Checking win conditions");
+    }
+}
+
 fn main() {
-    let mut board: [[Option<Colour>; 3]; 3] = [[None;3];3];
+    let mut board: Board = Board::new(3);
     gameloop(board)
 }
 
-fn gameloop(mut board: [[Option<Colour>; 3]; 3]) {
+fn gameloop(mut board: Board) {
     let mut counter: Colour = Colour::Black;
     loop{
-        println!("{:?}\n{:?}\n{:?}\nIt is player {:?}'s turn.",board[0],board[1],board[2],counter);
+        board.print();
+        println!("{:?}'s turn", counter);
         let mut player_move = String::new();
-        io::stdin().read_line(&mut player_move);
+        io::stdin().read_line(&mut player_move).expect("TODO: panic message");
         let player_move = player_move.trim();
-        let mut board_file: usize;
+        let board_file: usize;
         match &player_move {
+            &"" => {
+                println!("{}", ERR_BAD_INPUT);
+                continue
+            },
             &"quit" => break,
             &"clear" => {
-                board = [[None; 3]; 3];
+                board = Board::new(board.size);
                 continue
             },
             _ => {},
@@ -57,28 +95,29 @@ fn gameloop(mut board: [[Option<Colour>; 3]; 3]) {
         }
         match &player_move[1..2] {
             "1" => {
-                if board[0][board_file] == None { board[0][board_file] = Some(counter)}
+                if board.board[0][board_file] == None { board.board[0][board_file] = Some(counter)}
                 else {
-                    println!("{}{:?}", ERR_OCCUPIED, board[0][board_file]);
+                    println!("{}{:?}", ERR_OCCUPIED, board.board[0][board_file]);
                     continue
                 }
             }
             "2" => {
-                if board[1][board_file] == None { board[1][board_file] = Some(counter)}
+                if board.board[1][board_file] == None { board.board[1][board_file] = Some(counter)}
                 else {
-                    println!("{}{:?}", ERR_OCCUPIED, board[1][board_file]);
+                    println!("{}{:?}", ERR_OCCUPIED, board.board[1][board_file]);
                     continue
                 }
             }
             "3" => {
-                if board[2][board_file] == None { board[2][board_file] = Some(counter)}
-                else {println!("{}{:?}", ERR_OCCUPIED, board[2][board_file]); continue}
+                if board.board[2][board_file] == None { board.board[2][board_file] = Some(counter)}
+                else {println!("{}{:?}", ERR_OCCUPIED, board.board[2][board_file]); continue}
             }
             _ => {
                 println!("{}", ERR_BAD_INPUT);
                 continue
             }
         }
+        board.check_win();
         counter = Colour::advance_turn(counter);
 
     }
