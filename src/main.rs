@@ -27,9 +27,9 @@ enum StoneType {
     Wall(Colour),
 }
 
+#[derive(Clone)]
 struct Stack {
     contents:Vec<StoneType>,
-    max_height:u8
 }
 
 impl Stack {
@@ -37,11 +37,14 @@ impl Stack {
         self.contents.last()
     }
 
-    fn new(max_height: u8) -> Stack {
+    fn new() -> Stack {
         Stack {
             contents: Vec::new(),
-            max_height
         }
+    }
+
+    fn put_onto(&mut self, stone_type: StoneType) {
+        self.contents.push(stone_type);
     }
 }
 
@@ -54,33 +57,50 @@ enum Compass {
 }
 
 struct Board {
-    board: Vec<Vec<Option<StoneType>>>,
+    board: Vec<Vec<Stack>>,
     size: usize,
 }
 
 impl Board {
+
     fn new(size: usize) -> Board {
         Board {
-            board: vec![vec![None; size]; size],
+            board: vec![vec![Stack::new(); size]; size],
             size,
         }
     }
 
     fn print(&self) {
+        let mut max_height: u8 = 3;
         for i in self.board.as_slice() {
-            println!("{}", "_".repeat(self.size * 4 + 1));
             for j in i {
-                match j {
-                    Some(StoneType::Road(Colour::Black)) => print!("| ░ "),
-                    Some(StoneType::Road(Colour::White)) => print!("| █ "),
-                    Some(StoneType::Wall(Colour::Black)) => print!("| ⧅ "), //║
-                    Some(StoneType::Wall(Colour::White)) => print!("| ⬔ "), //┃
-                    None => print!("|   ")
+                let height = j.contents.len() as u8;
+                if height > max_height {
+                    max_height = height;
+                }
+            }
+        }
+        for i in self.board.as_slice() {
+            println!("{}", "_".repeat(self.size * (max_height as usize + 1) + 1));
+            for j in i {
+                print!("|");
+                if j.contents.is_empty() {
+                    print!("{}", " ".repeat(max_height as usize))
+                } else {
+                    for k in &j.contents {
+                        match k {
+                            StoneType::Road(Colour::Black) => print!("░"),
+                            StoneType::Road(Colour::White) => print!("█"),
+                            StoneType::Wall(Colour::Black) => print!("⧅"), //║
+                            StoneType::Wall(Colour::White) => print!("⬔"), //┃
+                        }
+                    }
+                    print!("{}", " ".repeat(max_height as usize - j.contents.len()))
                 }
             }
             println!("|")
         }
-        println!("{}", "_".repeat(self.size * 4 + 1));
+        println!("{}", "_".repeat(self.size * (max_height as usize + 1) + 1));
     }
 
     fn check_win(&self, row: usize, file: usize, candidate: Colour, mut win_sum: Vec<Compass>, visited: &mut Vec<(usize, usize)>) -> Vec<Compass> {
@@ -105,16 +125,16 @@ impl Board {
             win_sum.push(Compass::West);
         }
 
-        if row > 0 && self.board[row-1][file] == Some(StoneType::Road(candidate)) {
+        if row > 0 && self.board[row-1][file].get_top() == Some(&StoneType::Road(candidate)) {
             win_sum = self.check_win(row-1, file, candidate, win_sum, visited);
         }
-        if file+1 < self.size && self.board[row][file+1] == Some(StoneType::Road(candidate)) {
+        if file+1 < self.size && self.board[row][file+1].get_top() == Some(&StoneType::Road(candidate)) {
             win_sum = self.check_win(row, file+1, candidate, win_sum, visited);
         }
-        if row+1 < self.size && self.board[row+1][file] == Some(StoneType::Road(candidate)) {
+        if row+1 < self.size && self.board[row+1][file].get_top() == Some(&StoneType::Road(candidate)) {
             win_sum = self.check_win(row+1, file, candidate, win_sum, visited);
         }
-        if file > 0 && self.board[row][file-1] == Some(StoneType::Road(candidate)) {
+        if file > 0 && self.board[row][file-1].get_top() == Some(&StoneType::Road(candidate)) {
             win_sum = self.check_win(row, file-1, candidate, win_sum, visited);
         }
         win_sum
@@ -184,9 +204,12 @@ fn game_loop(mut board: Board) {
                 continue
             }
         }
-        if board.board[board_row][board_file] == None { board.board[board_row][board_file] = Some(stone_type)}
+        if board.board[board_row][board_file].contents.is_empty() {
+            board.board[board_row][board_file].put_onto(stone_type);
+
+        }
         else {
-            println!("{}{:?}", ERR_OCCUPIED, board.board[board_row][board_file]);
+            println!("{}{:?}", ERR_OCCUPIED, board.board[board_row][board_file].get_top());
             continue
         }
         if stone_type == StoneType::Road(counter) {
